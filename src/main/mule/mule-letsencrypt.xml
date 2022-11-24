@@ -11,7 +11,7 @@ http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/cu
 	</http:listener-config>
 	<os:object-store name="OS_LetEncryptResponses" doc:name="Object store" doc:id="2940f0e6-a8a3-4e27-be7c-78da314a9fe4" persistent="false" entryTtl="1" entryTtlUnit="MINUTES" />
 	<flow name="mule-letsencryptFlow" doc:id="4f59db25-ed68-420c-828f-36bac6309280" >
-		<http:listener doc:name="GET .well-known/acme" doc:id="6b0a11db-7696-42db-bc06-29200bf2fddc" config-ref="HTTP_Listener_config" path=".well-known/acme/{filename}" allowedMethods="GET"/>
+		<http:listener doc:name="GET .well-known/acme-challenge" doc:id="6b0a11db-7696-42db-bc06-29200bf2fddc" config-ref="HTTP_Listener_config" path=".well-known/acme-challenge/{filename}" allowedMethods="GET"/>
 		<set-variable value="#[attributes.uriParams.filename]" doc:name="Set Filename" doc:id="aa0b08c4-48bb-40cf-8e68-a66137d4ff83" variableName="filename"/>
 		<os:retrieve doc:name="Read the file content" doc:id="ed4feb52-bbbb-49f0-8c30-9472ed3ff69b" key="#[vars.filename]" objectStore="OS_LetEncryptResponses">
 			<os:default-value ><![CDATA[#[""]]]></os:default-value>
@@ -27,7 +27,7 @@ payload]]></ee:set-payload>
 		</ee:transform>
 	</flow>
 	<flow name="mule-letsencryptFlow-update" doc:id="85478e29-84e2-4ac1-9eef-66dfe9861825" >
-		<http:listener doc:name="POST .well-known/acme" doc:id="715bb617-5319-4d89-9f14-4a8a838cd993" config-ref="HTTP_Listener_config" path=".well-known/acme/{filename}" allowedMethods="POST" outputMimeType="text/plain">
+		<http:listener doc:name="POST .well-known/acme-challenge" doc:id="715bb617-5319-4d89-9f14-4a8a838cd993" config-ref="HTTP_Listener_config" path=".well-known/acme-challenge/{filename}" allowedMethods="POST" outputMimeType="text/plain">
 			<http:response statusCode="#[vars.httpStatus]" />
 		</http:listener>
 		<set-variable value="#[attributes.uriParams.filename]" doc:name="Set Filename" doc:id="b8721499-cae5-4e61-96d7-9b0514cc354f" variableName="filename" />
