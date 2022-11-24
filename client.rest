@@ -1,2 +1,7 @@
 GET http://localhost:8081/.well-known/acme/file.txt
 
+###
+POST http://localhost:8081/.well-known/acme/file.txt
+Content-Type: text/plain
+
+ABC.DEF1

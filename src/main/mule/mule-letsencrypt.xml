@@ -1,22 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
 	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="b80244da-bc2d-4dd3-bfcc-a6872cb7e6ca" >
 		<http:listener-connection host="0.0.0.0" port="8081" />
 	</http:listener-config>
+	<os:object-store name="OS_LetEncryptResponses" doc:name="Object store" doc:id="2940f0e6-a8a3-4e27-be7c-78da314a9fe4" persistent="false" entryTtl="1" entryTtlUnit="MINUTES" />
 	<flow name="mule-letsencryptFlow" doc:id="4f59db25-ed68-420c-828f-36bac6309280" >
-		<http:listener doc:name="Listener" doc:id="6b0a11db-7696-42db-bc06-29200bf2fddc" config-ref="HTTP_Listener_config" path=".well-known/acme/{filename}"/>
-		<ee:transform doc:name="Transform Message" doc:id="ee2a9c03-6ca8-479c-991a-9987f076b6a8" >
+		<http:listener doc:name="GET .well-known/acme" doc:id="6b0a11db-7696-42db-bc06-29200bf2fddc" config-ref="HTTP_Listener_config" path=".well-known/acme/{filename}" allowedMethods="GET"/>
+		<set-variable value="#[attributes.uriParams.filename]" doc:name="Set Filename" doc:id="aa0b08c4-48bb-40cf-8e68-a66137d4ff83" variableName="filename"/>
+		<os:retrieve doc:name="Read the file content" doc:id="ed4feb52-bbbb-49f0-8c30-9472ed3ff69b" key="#[vars.filename]" objectStore="OS_LetEncryptResponses">
+			<os:default-value ><![CDATA[#[""]]]></os:default-value>
+		</os:retrieve>
+		<logger level="INFO" doc:name="Logger" doc:id="0ed0f069-8144-42ea-bf0d-042bfba7f817" message='#[output text --- "STORE returned $(vars.filename) --&gt; $(payload)"]' category="mule.letsencrypt.store"/>
+		<ee:transform doc:name="Return the content in plain text" doc:id="d5d10d24-4255-4479-8e2c-f80f0815c4ff" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
 output text/plain
 ---
-attributes.uriParams.filename]]></ee:set-payload>
+payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
+	</flow>
+	<flow name="mule-letsencryptFlow-update" doc:id="85478e29-84e2-4ac1-9eef-66dfe9861825" >
+		<http:listener doc:name="POST .well-known/acme" doc:id="715bb617-5319-4d89-9f14-4a8a838cd993" config-ref="HTTP_Listener_config" path=".well-known/acme/{filename}" allowedMethods="POST" outputMimeType="text/plain">
+			<http:response statusCode="#[vars.httpStatus]" />
+		</http:listener>
+		<set-variable value="#[attributes.uriParams.filename]" doc:name="Set Filename" doc:id="b8721499-cae5-4e61-96d7-9b0514cc354f" variableName="filename" />
+		<set-variable value="#[payload]" doc:name="Set File Content" doc:id="548d346a-1294-4637-a4f6-890bcdde61f7" variableName="fileContent"/>
+		<os:store doc:name="Store the file content" doc:id="7d379239-1712-4d2b-9370-2430f10a769d" key="#[vars.filename]" objectStore="OS_LetEncryptResponses" >
+			<os:value ><![CDATA[#[vars.fileContent]]]></os:value>
+		</os:store>
+		<logger level="INFO" doc:name="Logger" doc:id="77e491db-baa0-4ad2-bc1d-d909b78afb6d" message='#[output text --- "STORE updated: $(vars.filename) --&gt; $(vars.fileContent)"]' category="mule.letsencrypt.store"/>
+		<ee:transform doc:name="Return sucessful message" doc:id="8de5ed89-d6c3-4bec-8b3d-046ac38a5cbe" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "OK"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="201" doc:name="HTTP 201" doc:id="f4e3ff35-fb95-4d3b-a03f-81fb735dc023" variableName="httpStatus"/>
 	</flow>
 </mule>
